@@ -17,18 +17,8 @@ export default function ImageUpload({
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
-    // Since we don't have the explicit Cloudinary credentials injected yet, 
-    // we will use the ENV variables if available, otherwise it will fail gracefully.
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
-
-        if (!cloudName || !uploadPreset) {
-            setError("Cloudinary configuration missing (.env). Cannot upload.");
-            return;
-        }
 
         const files = Array.from(e.target.files);
 
@@ -56,24 +46,20 @@ export default function ImageUpload({
                 };
                 const compressedFile = await imageCompression(file, options);
 
-                // 2. Upload to Cloudinary Unsigned
+                // Securely upload via our Next.js API route directly to Cloudinary
                 const formData = new FormData();
                 formData.append("file", compressedFile);
-                formData.append("upload_preset", uploadPreset);
 
-                const response = await fetch(
-                    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-                    {
-                        method: "POST",
-                        body: formData,
-                    }
-                );
+                const response = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                });
 
-                if (!response.ok) {
-                    throw new Error("Failed to upload to Cloudinary");
-                }
-
+                if (!response.ok) throw new Error("Cloudinary server upload failed");
                 const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
                 newUploadedUrls.push(data.secure_url);
             }
 

@@ -24,14 +24,15 @@ export async function createSellItem(prevState: any, formData: FormData) {
         return { error: "You must be logged in to sell an item." };
     }
 
-    // Get user ID from the database using email
-    const user = await prisma.user.findUnique({
+    // Upsert user ID securely into database seamlessly using their session email
+    const user = await prisma.user.upsert({
         where: { email: session.user.email },
+        update: { name: session.user.name },
+        create: {
+            email: session.user.email,
+            name: session.user.name || session.user.email.split('@')[0],
+        }
     });
-
-    if (!user) {
-        return { error: "User not found in database." };
-    }
 
     const rawFormData = {
         title: formData.get("title"),
@@ -87,15 +88,21 @@ async function verifyItemOwnership(itemId: string) {
     const session = await auth();
     if (!session?.user?.email) throw new Error("Unauthorized");
 
-    const user = await prisma.user.findUnique({
+    // Upsert the user to guarantee authorization records exist
+    const user = await prisma.user.upsert({
         where: { email: session.user.email },
+        update: { name: session.user.name },
+        create: {
+            email: session.user.email,
+            name: session.user.name || session.user.email.split('@')[0],
+        }
     });
 
     const item = await prisma.item.findUnique({
         where: { id: itemId },
     });
 
-    if (!user || !item || item.postedById !== user.id) {
+    if (!item || item.postedById !== user.id) {
         throw new Error("Unauthorized: Only the owner can modify this listing.");
     }
 

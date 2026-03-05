@@ -3,13 +3,13 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import EditItemForm from "./EditItemForm";
 
-export default async function EditItemPage({ params }: { params: { id: string } }) {
+export default async function EditItemPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth();
     if (!session?.user?.email) {
         redirect("/login");
     }
 
-    const itemId = params.id;
+    const { id: itemId } = await params;
     const item = await prisma.item.findUnique({
         where: { id: itemId },
         include: {

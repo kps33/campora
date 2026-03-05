@@ -6,8 +6,8 @@ import { auth } from "@/auth";
 import Link from "next/link";
 import { archiveItem } from "@/app/actions/itemActions";
 
-export default async function ItemPage({ params }: { params: { id: string } }) {
-    const itemId = params.id;
+export default async function ItemPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id: itemId } = await params;
 
     const item = await prisma.item.findUnique({
         where: { id: itemId },
@@ -57,7 +57,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                         {/* Status Badge */}
                         <div className="absolute top-5 right-5 z-10">
                             <span className={`px-4 py-1.5 text-xs font-black tracking-widest uppercase rounded-full shadow-lg backdrop-blur-md ${item.status === "ACTIVE" ? "bg-emerald-500 text-white" :
-                                    item.status === "SOLD" ? "bg-neutral-800 text-white" : "bg-blue-600 text-white"
+                                item.status === "SOLD" ? "bg-neutral-800 text-white" : "bg-blue-600 text-white"
                                 }`}>
                                 {item.status}
                             </span>

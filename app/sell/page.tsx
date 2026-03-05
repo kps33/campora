@@ -39,7 +39,7 @@ export default function SellPage() {
 
     const handleUploadSuccess = (urls: string[]) => {
         setImages(urls);
-    };
+    };  
 
     return (
         <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-24 pb-12 font-sans selection:bg-blue-500 selection:text-white">
