@@ -1,179 +1,235 @@
-import { Navbar } from "@/components/Navbar";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import FeedItem from "@/components/FeedItem";
 import Link from "next/link";
-import { Prisma } from "@/app/generated/prisma/client";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/footer";
+import { BlurFade } from "@/components/ui/blur-fade";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { cn } from "@/lib/utils";
+import { ShoppingBag, Plus, Tag, User } from "lucide-react";
 
-export default async function Home({
+const GRADIENT_PALETTES = [
+  "from-violet-500/30 to-purple-600/30",
+  "from-purple-500/30 to-fuchsia-500/30",
+  "from-indigo-500/30 to-violet-500/30",
+  "from-fuchsia-500/30 to-pink-500/30",
+  "from-violet-600/30 to-indigo-500/30",
+  "from-purple-400/30 to-violet-600/30",
+];
+
+const CATEGORIES = ["All", "Electronics", "Textbooks", "Furniture", "Clothing", "Other"];
+
+export default async function MarketplacePage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ category?: string; q?: string }>;
 }) {
-  // Parsing Search Parameters for Task 5: Filters & Search natively integrated into Feed UI
-  const sp = await searchParams; // Next.js 15+ search params are promises natively sometimes, but we'll await out of caution
+  const { category, q } = await searchParams;
+  const session = await auth();
 
-  const query = typeof sp.q === "string" ? sp.q : undefined;
-  const categoryStr = typeof sp.category === "string" ? sp.category : undefined;
-  const conditionStr = typeof sp.condition === "string" ? sp.condition : undefined;
-  const minPrice = typeof sp.min === "string" ? parseFloat(sp.min) : undefined;
-  const maxPrice = typeof sp.max === "string" ? parseFloat(sp.max) : undefined;
-
-  // Build Prisma Where Clause dynamically
-  const whereClause: Prisma.ItemWhereInput = {
-    type: "SALE",
-    status: "ACTIVE",
-  };
-
-  if (query) {
-    whereClause.OR = [
-      { title: { contains: query, mode: "insensitive" } },
-      { description: { contains: query, mode: "insensitive" } },
-    ];
-  }
-
-  if (categoryStr) {
-    whereClause.category = categoryStr;
-  }
-
-  if (conditionStr) {
-    whereClause.condition = conditionStr;
-  }
-
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    whereClause.price = {};
-    if (minPrice !== undefined && !isNaN(minPrice)) whereClause.price.gte = minPrice;
-    if (maxPrice !== undefined && !isNaN(maxPrice)) whereClause.price.lte = maxPrice;
-  }
-
-  // Fetch Items from Database
   const items = await prisma.item.findMany({
-    where: whereClause,
-    orderBy: { id: "desc" }, // newest first (CUIDs sort chronologically by default usually, but creating a createdAt field is better long term)
+    where: {
+      type: "SALE",
+      status: "ACTIVE",
+      ...(category && category !== "All" ? { category } : {}),
+      ...(q
+        ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+          ],
+        }
+        : {}),
+    },
+    orderBy: { id: "desc" } as any,
     include: {
-      postedBy: {
-        select: { name: true },
-      },
+      postedBy: { select: { name: true } },
     },
   });
 
+  const activeCategory = category || "All";
+
   return (
-    <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-20 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="relative min-h-screen bg-background text-foreground">
       <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Dynamic Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white p-10 md:p-16 mb-12 shadow-2xl">
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 rounded-full bg-white opacity-10 blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-blue-400 opacity-20 blur-3xl"></div>
-
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="max-w-2xl">
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 drop-shadow-sm">
-                Campus Marketplace
-              </h1>
-              <p className="text-lg md:text-xl text-blue-100 mb-8 max-w-xl font-medium">
-                Buy, sell, and discover items within your campus community safely and securely.
-              </p>
-              <Link
-                href="/sell"
-                className="inline-flex items-center gap-2 bg-white text-blue-700 px-8 py-3.5 rounded-full font-bold hover:bg-blue-50 hover:scale-105 transition-all shadow-lg active:scale-95"
-              >
-                <span>Sell an Item</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </Link>
-            </div>
-
-            <div className="hidden md:block">
-              {/* Decorative element representing shopping/items */}
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 p-6 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-24 h-24 text-blue-100 opacity-80">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.809c0-.859-.652-1.594-1.5-1.653l-3.15-.218m-6-1.042V3.75c0-.83.67-1.5 1.5-1.5h1.5c.83 0 1.5.67 1.5 1.5v3.428m-6 1.04v7.922m-6-1.042l3.15-.218c.848-.059 1.5.677 1.5 1.536v8.406" />
-                </svg>
-              </div>
-            </div>
-          </div>
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-12 pt-28">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <BlurFade delay={0.1}>
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary backdrop-blur-sm">
+              <ShoppingBag className="size-3.5" />
+              Campus Marketplace
+            </span>
+          </BlurFade>
+          <BlurFade delay={0.2}>
+            <h1 className="font-heading text-4xl font-bold text-foreground sm:text-5xl">
+              Browse Campus Listings
+            </h1>
+          </BlurFade>
+          <BlurFade delay={0.4}>
+            <p className="mt-4 text-muted-foreground">
+              Find textbooks, electronics, furniture, and more from fellow students.
+            </p>
+          </BlurFade>
         </div>
 
-        {/* Premium Filter UI (Glassmorphism inspired) */}
-        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-neutral-800 mb-10 sticky top-24 z-20 transition-all hover:shadow-md">
-          <form action="/" method="GET" className="flex flex-col xl:flex-row gap-4">
-            <div className="flex-grow">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-gray-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  name="q"
-                  defaultValue={query}
-                  placeholder="Search for textbooks, electronics..."
-                  className="w-full pl-10 pr-4 py-3 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
-                />
-              </div>
+        {/* Search & Filters */}
+        <BlurFade delay={0.5}>
+          <form className="mb-8 flex flex-col gap-4">
+            <div className="relative">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                name="q"
+                defaultValue={q}
+                placeholder="Search items..."
+                className="w-full rounded-xl border border-border bg-card/80 py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground backdrop-blur-sm transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <input type="hidden" name="category" value={activeCategory} />
             </div>
-
-            <div className="flex flex-wrap md:flex-nowrap gap-4">
-              <select name="category" defaultValue={categoryStr || ""} className="w-full md:w-auto py-3 px-4 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer appearance-none font-medium text-neutral-700 dark:text-neutral-300">
-                <option value="">All Categories</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Textbooks">Textbooks</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Other">Other</option>
-              </select>
-
-              <select name="condition" defaultValue={conditionStr || ""} className="w-full md:w-auto py-3 px-4 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer appearance-none font-medium text-neutral-700 dark:text-neutral-300">
-                <option value="">All Conditions</option>
-                <option value="New">✨ New</option>
-                <option value="Like New">🌟 Like New</option>
-                <option value="Good">👍 Good</option>
-                <option value="Fair">👌 Fair</option>
-              </select>
-
-              <div className="flex gap-2 w-full md:w-auto">
-                <input type="number" name="min" defaultValue={minPrice} placeholder="Min $" className="w-1/2 md:w-24 py-3 px-3 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all" />
-                <input type="number" name="max" defaultValue={maxPrice} placeholder="Max $" className="w-1/2 md:w-24 py-3 px-3 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all" />
-              </div>
-
-              <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <Link href="/" className="flex-1 md:flex-none flex items-center justify-center px-4 py-3 rounded-xl text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors font-medium">
-                  Reset
-                </Link>
-                <button type="submit" className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all font-medium active:scale-95 shadow-md shadow-blue-500/30">
-                  Search
-                </button>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((cat) => (
+                <a
+                  key={cat}
+                  href={`/marketplace?category=${encodeURIComponent(cat)}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+                  className={cn(
+                    "rounded-full px-4 py-1.5 text-sm font-sans transition-all",
+                    activeCategory === cat
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-card/60 text-muted-foreground hover:border-primary/30 hover:text-foreground backdrop-blur-sm"
+                  )}
+                >
+                  {cat}
+                </a>
+              ))}
             </div>
           </form>
-        </div>
+        </BlurFade>
 
-        {/* Feed Grid */}
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-neutral-900 rounded-3xl border border-dashed border-neutral-300 dark:border-neutral-800 shadow-sm mt-8">
-            <div className="bg-neutral-100 dark:bg-neutral-800 p-4 rounded-full mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-neutral-400">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-200">No items found</h3>
-            <p className="text-neutral-500 mt-2 max-w-sm text-center">We couldn't find any items matching your current filters. Try adjusting your search criteria.</p>
-            <Link href="/" className="mt-6 text-blue-600 font-medium hover:underline decoration-2 underline-offset-4">
-              Clear all filters
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
-            {items.map((item) => (
-              <FeedItem key={item.id} item={item} />
+        {/* Results */}
+        <BlurFade delay={0.6}>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Showing {items.length} item{items.length !== 1 ? "s" : ""}
+            {activeCategory !== "All" ? ` in ${activeCategory}` : ""}
+          </p>
+        </BlurFade>
+
+        {items.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item, i) => (
+              <BlurFade key={item.id} delay={0.1 + i * 0.04} inView>
+                <Link href={`/item/${item.id}`} className="group block">
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1">
+                    {/* Image or Gradient Placeholder */}
+                    {item.imageUrls.length > 0 ? (
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={item.imageUrls[0]}
+                          alt={item.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                      </div>
+                    ) : (
+                      <div
+                        className={cn(
+                          "flex h-48 items-center justify-center bg-gradient-to-br",
+                          GRADIENT_PALETTES[i % GRADIENT_PALETTES.length]
+                        )}
+                      >
+                        <div className="flex flex-col items-center gap-2 text-foreground/50">
+                          <Tag className="size-8" />
+                          <span className="text-xs font-sans">{item.category}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-3 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-heading text-base font-semibold leading-tight text-foreground line-clamp-2">
+                          {item.title}
+                        </h3>
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 font-heading text-sm font-bold text-primary">
+                          ${item.price?.toFixed(0)}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between border-t border-border pt-3">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <User className="size-3" />
+                          <span>{item.postedBy.name ?? "Unknown"}</span>
+                        </div>
+                      </div>
+                      <span className="inline-flex w-fit rounded-md bg-accent px-2 py-0.5 text-xs font-sans text-accent-foreground">
+                        {item.condition}
+                      </span>
+                    </div>
+
+                    <BorderBeam
+                      size={150}
+                      duration={12}
+                      colorFrom="#7c3aed"
+                      colorTo="#c084fc"
+                      borderWidth={1}
+                      className="opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                    />
+                  </div>
+                </Link>
+              </BlurFade>
             ))}
           </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+              <ShoppingBag className="size-7 text-muted-foreground" />
+            </div>
+            <h3 className="font-heading text-lg font-semibold text-foreground">No items found</h3>
+            <p className="text-sm text-muted-foreground">
+              {q || activeCategory !== "All"
+                ? "Try adjusting your search or filter criteria."
+                : "No active listings yet. Be the first to sell something!"}
+            </p>
+            <a href="/marketplace" className="text-sm text-primary underline underline-offset-2">
+              Clear filters
+            </a>
+          </div>
         )}
-      </div>
-    </main>
+
+        {/* Sell CTA */}
+        <BlurFade delay={0.3} inView>
+          <div className="mt-16 rounded-2xl border border-primary/20 bg-card/60 p-8 text-center backdrop-blur-sm">
+            <h3 className="font-heading text-2xl font-bold text-foreground">
+              Have something to sell?
+            </h3>
+            <p className="mt-2 text-muted-foreground">
+              {session
+                ? "Post your item and connect with campus buyers instantly."
+                : "Sign in with your @dau.ac.in Google account to list your items."}
+            </p>
+            <div className="mt-6">
+              <Link
+                href={session ? "/sell" : "/api/auth/login?callbackUrl=/sell"}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-heading font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <Plus className="size-4" />
+                {session ? "Post an Item" : "Sign In to Sell"}
+              </Link>
+            </div>
+          </div>
+        </BlurFade>
+      </main>
+
+      <Footer />
+    </div>
   );
 }
