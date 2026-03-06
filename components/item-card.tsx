@@ -51,13 +51,15 @@ export function MarketplaceCard({
                     {item.description}
                 </p>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="size-3" />
-                        <span>{item.seller}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Clock className="size-3" />
-                        <span>{item.date}</span>
+                    <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                            <User className="size-3" />
+                            <span>{item.seller}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Clock className="size-3" />
+                            <span>{new Date((item as any).createdAt).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 </div>
                 <span className="inline-flex w-fit rounded-md bg-accent px-2 py-0.5 text-xs font-sans text-accent-foreground">

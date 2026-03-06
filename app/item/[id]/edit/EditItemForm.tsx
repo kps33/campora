@@ -111,10 +111,10 @@ export default function EditItemForm({ item }: { item: Item }) {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Price ($)</label>
+                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Price (₹)</label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <span className="text-neutral-500 font-medium">$</span>
+                            <span className="text-neutral-500 font-medium">₹</span>
                         </div>
                         <input
                             type="number"

@@ -163,3 +163,44 @@ export async function editItem(itemId: string, formData: FormData) {
     revalidatePath(`/item/${itemId}`);
     redirect(`/item/${itemId}`);
 }
+
+export async function purchaseItem(itemId: string) {
+    try {
+        const session = await auth();
+        if (!session?.user?.email) throw new Error("You must be logged in to purchase items.");
+
+        // Upsert the user to ensure we have their database ID
+        const user = await prisma.user.upsert({
+            where: { email: session.user.email },
+            update: { name: session.user.name },
+            create: {
+                email: session.user.email,
+                name: session.user.name || session.user.email.split('@')[0],
+            }
+        });
+
+        const item = await prisma.item.findUnique({
+            where: { id: itemId },
+        });
+
+        if (!item) throw new Error("Item not found");
+        if (item.status !== "ACTIVE") throw new Error("Item is no longer available");
+        if (item.postedById === user.id) throw new Error("You cannot purchase your own item");
+
+        await prisma.item.update({
+            where: { id: itemId },
+            data: {
+                status: "SOLD",
+                buyerId: user.id
+            },
+        });
+
+        revalidatePath("/");
+        revalidatePath(`/item/${itemId}`);
+        revalidatePath("/purchases");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Purchase error:", error);
+        return { error: error.message };
+    }
+}

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { cn } from "@/lib/utils";
-import { Menu, X, LogOut, Plus } from "lucide-react";
+import { Menu, X, LogOut, Plus, Tag, ShoppingBag } from "lucide-react";
 
 const NAV_LINKS = [
     { label: "Home", href: "/" },
@@ -95,6 +95,22 @@ export function NavbarClient({ user }: NavbarClientProps) {
                                     />
                                     <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-2xl border border-border bg-card/95 p-2 shadow-xl backdrop-blur-xl">
                                         <Link
+                                            href="/my-items"
+                                            onClick={() => setProfileOpen(false)}
+                                            className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-sans font-medium text-foreground transition-colors hover:bg-accent"
+                                        >
+                                            <Tag className="size-4 text-primary" />
+                                            My Listings
+                                        </Link>
+                                        <Link
+                                            href="/purchases"
+                                            onClick={() => setProfileOpen(false)}
+                                            className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-sans font-medium text-foreground transition-colors hover:bg-accent"
+                                        >
+                                            <ShoppingBag className="size-4 text-primary" />
+                                            Past Purchases
+                                        </Link>
+                                        <Link
                                             href="/sell"
                                             onClick={() => setProfileOpen(false)}
                                             className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-sans font-medium text-foreground transition-colors hover:bg-accent"
@@ -160,6 +176,20 @@ export function NavbarClient({ user }: NavbarClientProps) {
                                     className="rounded-lg px-4 py-3 text-sm font-sans font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                                 >
                                     Sell an Item
+                                </Link>
+                                <Link
+                                    href="/my-items"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="rounded-lg px-4 py-3 text-sm font-sans font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                                >
+                                    My Listings
+                                </Link>
+                                <Link
+                                    href="/purchases"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="rounded-lg px-4 py-3 text-sm font-sans font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                                >
+                                    Past Purchases
                                 </Link>
                                 <a
                                     href="/api/auth/signout"
